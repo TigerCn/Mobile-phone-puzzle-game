@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name='viewport' content='width=device-width,initial-scale=1,user-scalable=no'>
+	<title>9.拼图</title>
+	<style type="text/css">
+	*{margin:0;padding:0;}
+	button{width:100%;font-size: 20px;text-align: center;color:purple;}
+	ul{width:300px;height:300px;list-style: none;border:1px solid #ccc;font-size: 0;position: relative;}
+	ul li{background-image: url(images/0.jpg);display: inline-block;width:100px;background-size:300px 300px;height:100px;position: absolute;transition:all 0.5s;}
+	#mianban{width:300px;height:300px;position: relative;line-height: 300px;}
+	#nextBtn{width:100%;height:100%;color:white;font-size:30px;font-weight:bold;text-align:center;position:absolute;top:0;left:0;bottom:0;right:0;border:1px solid purple;background:radial-gradient(red 0%,black 100%);display: none;}
+	#pastTime{float: right;color:#f40;}
+	</style>
+</head>
+<body>
+	<h1>拼图游戏<span id='pastTime'></span></h1>
+	<button id="btn">开始</button>
+	<div id="mianban">
+		<ul id="pingtu">
+			<li dataNumber='1' style="left:0;top:0;background-position:0 0"></li>
+			<li dataNumber='2' style="left:100px;top:0;background-position:-100px 0"></li>
+			<li dataNumber='3' style="left:200px;top:0;background-position:-200px 0"></li>
+			<li dataNumber='4' style="left:0;top:100px;background-position:0 -100px"></li>
+			<li dataNumber='5' style="left:100px;top:100px;background-position:-100px -100px"></li>
+			<li dataNumber='6' style="left:200px;top:100px;background-position:-200px -100px"></li>
+			<li dataNumber='7' style="left:0;top:200px;background-position:0 -200px"></li>
+			<li dataNumber='8' style="left:100px;top:200px;background-position:-100px -200px"></li>
+			<li dataNumber='9' style="left:200px;top:200px;background-position:-200px -200px"></li>
+		</ul>
+		<div id='nextBtn'>下一关</div>
+	</div>
+	<script>
+	;(function(){function $(id){
+		return document.getElementById(id);
+	}
+	var btn=$('btn');
+	var lis=$('pingtu').querySelectorAll("li");//获得ul下的所有li
+	var len=lis.length;//获得li的个数
+	var liLen=lis[0].offsetWidth;//获得一个li的大小
+	var number=0;//闯关的位置
+	var info={x:0,y:0,left:0,top:0}//初始化
+	var timer;//设置一个定时器
+	var pastTime=0;//计算游戏花费时间
+	//点击开始按钮，打乱图片
+	btn.addEventListener('click',function(){
+		//要交换元素的left，top值。
+		//例如：直接a,b元素的位置
+		//交换 10对元素的位置
+		for(var i=0;i<len;i++){
+			var a=Math.floor(Math.random()*100000)%9;
+			var b=Math.floor(Math.random()*100000)%9;
+			if(a!=b){
+				var x=parseInt(lis[a].style.left);
+				lis[a].style.left=parseInt(lis[b].style.left)+'px';
+				lis[b].style.left=x+'px';
+				var y=parseInt(lis[a].style.top);
+				lis[a].style.top=parseInt(lis[b].style.top)+'px';
+				lis[b].style.top=y+'px';
+				var z=lis[a].getAttribute('dataNumber');
+				lis[a].setAttribute('dataNumber',lis[b].getAttribute('dataNumber'));
+				lis[b].setAttribute('dataNumber',z);
+			}
+		}
+		timer=setInterval(function(){pastTime++},1000);
+		$('pastTime').innerHTML='计时中............';
+		this.innerHTML='游戏进行中，开足马力！';
+	})
+	//拖拽
+	for(var i=0;i<len;i++){
+		lis[i].addEventListener('touchstart',function(e){
+			info.x=e.targetTouches[0].pageX;	//刚开始接触移动图片时，触点的位置
+			info.y=e.targetTouches[0].pageY;
+			info.left=parseInt(this.style.left);//注意，this.style.left的值是***px,带单位的
+			info.top=parseInt(this.style.top);
+			//记住元素开始的位置，为后面做位置交换
+			this.oldLeft=info.left;
+			this.oldTop =info.top;
+			//不要动画
+			this.style.transition='none';
+		});
+		lis[i].addEventListener('touchmove',function(e){
+			this.style['z-index']=1000;
+			this.style.left=e.targetTouches[0].pageX-info.x+info.left+'px';
+			this.style.top =e.targetTouches[0].pageY-info.y+info.top+'px';
+		})
+		lis[i].addEventListener('touchend',function(e){
+			this.style.transition='all .5s';
+			this.style['z-index']=0;
+			//确定要交换的元素
+			var x=e.changedTouches[0].pageX-$('mianban').offsetLeft,//注意这里要用$('mianban').offsetLeft，而不能用$('pingtu').offsetLeft;因为.offsetLeft是盒子相对与最近父级的left的距离，而这里的$('pingtu').offsetLeft为0，但是$('mianban').offsetLeft不为0，因为$('pingtu')在这里充满了整个父级，并且它与浏览器最顶端有一定的距离，所以用$('mianban').offsetLeft
+			    y=e.changedTouches[0].pageY-$('mianban').offsetTop;
+			var obj=findSwitchLi(this,x,y);
+			if(obj===this){
+				obj.style.left=obj.oldLeft+'px';
+				obj.style.top =obj.oldTop+'px';
+			}
+			else{
+				switchLi(this,obj);	
+				if(isOk()){
+					clearTimeout(timer);
+					$('pastTime').innerHTML='共耗时 '+pastTime+'秒';
+					setTimeout(function(){
+						$('nextBtn').style.display='block';
+						$('btn').innerHTML='恭喜你！';
+						number+=1;
+						for(var i=0;i<len;i++){
+							lis[i].style.backgroundImage='url(images/'+number+'.jpg)';
+						}	
+					},600)
+					$('nextBtn').addEventListener('click',function(){
+						$('nextBtn').style.display='none';
+						$('btn').innerHTML='开始';
+						pastTime=0;
+					})
+				}
+			}
+		})
+	}
+	function findSwitchLi(obj,x,y){//根据想x,y的值来判断当前的obj落在哪里
+		for(var i=0;i<len;i++){
+			if(obj!=lis[i]){//自己不参与比较
+				var t1=(x>lis[i].offsetLeft)&&(x<lis[i].offsetLeft+liLen);
+				var t2=(y>lis[i].offsetTop)&&(y<lis[i].offsetTop+liLen);
+				if(t1&&t2){
+					return lis[i];
+				}
+			}
+		}
+		return obj;//没有找到目标就输出自己
+	}
+	function switchLi(a,b){//交换a,b的位置
+		var x=a.oldLeft;
+		a.style.left=parseInt(b.style.left)+'px';
+		b.style.left=x+'px';
+		var y=a.oldTop;
+		a.style.top=parseInt(b.style.top)+'px';
+		b.style.top=y+'px';
+		var z=a.getAttribute('dataNumber');
+		a.setAttribute('dataNumber',b.getAttribute('dataNumber'));
+		b.setAttribute('dataNumber',z);
+	}
+	function isOk(){
+		var str='';//设置一个字符串，如果结束的字符串和开始一样，则游戏成功
+		for(var i=0;i<len;i++){
+			str+=lis[i].getAttribute('dataNumber');
+		}
+		return '123456789'==str;
+	}
+})();
+	</script>
+</body>
+</html>
